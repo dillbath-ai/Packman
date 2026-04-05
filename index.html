@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>Pac-Man Math!</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;height:100dvh;overflow:hidden;font-family:'Arial',sans-serif}
+#gameContainer{position:relative;display:flex;flex-direction:column;align-items:center}
+#hud{color:#fff;font-size:16px;display:flex;justify-content:space-between;width:100%;padding:4px 8px;font-family:'Press Start 2P',monospace,Arial}
+#hud span{font-size:13px}
+canvas{display:block;border:2px solid #2121DE;border-radius:4px}
+#startScreen{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;color:#FFD700}
+#startScreen h1{font-size:28px;margin-bottom:10px;text-shadow:0 0 10px #FFD700}
+#startScreen p{color:#fff;font-size:14px;margin:6px 0;text-align:center;padding:0 20px}
+#startBtn{margin-top:20px;padding:16px 40px;font-size:20px;background:#FFD700;color:#000;border:none;border-radius:12px;cursor:pointer;font-weight:bold}
+#mathPopup{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,20,0.95);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:30;color:#fff}
+#mathPopup .question{font-size:28px;margin-bottom:20px;color:#FFD700}
+#mathPopup .choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:80%;max-width:280px}
+#mathPopup .choices button{padding:18px;font-size:24px;border:3px solid #2121DE;background:#111;color:#fff;border-radius:12px;cursor:pointer;font-weight:bold}
+#mathPopup .choices button:active{background:#2121DE}
+#mathPopup .choices button.correct{background:#0f0;color:#000;border-color:#0f0}
+#mathPopup .choices button.wrong{background:#f00;color:#fff;border-color:#f00}
+#quotePopup{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,20,0.95);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:31;color:#fff;text-align:center;padding:20px}
+#quotePopup .quoteText{font-size:18px;color:#FFD700;margin:20px;line-height:1.5;font-style:italic;max-width:320px}
+#quotePopup .quoteAuthor{font-size:14px;color:#aaa;margin-bottom:20px}
+#quotePopup .stars{font-size:36px;margin-bottom:10px}
+#quotePopup .continueBtn{padding:16px 32px;font-size:40px;background:none;border:none;cursor:pointer}
+#gameOver{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:25;color:#f00}
+#gameOver h2{font-size:24px;margin-bottom:10px}
+#gameOver p{color:#FFD700;font-size:18px;margin:8px}
+#gameOver button{margin-top:16px;padding:14px 36px;font-size:18px;background:#FFD700;color:#000;border:none;border-radius:12px;cursor:pointer;font-weight:bold}
+#touchControls{display:grid;grid-template-areas:"_ up _" "left _ right" "_ down _";grid-template-columns:60px 60px 60px;grid-template-rows:60px 60px 60px;gap:4px;margin-top:8px}
+.tBtn{width:60px;height:60px;border-radius:50%;border:2px solid #FFD700;background:rgba(255,215,0,0.15);color:#FFD700;font-size:24px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tBtn:active{background:rgba(255,215,0,0.4)}
+#tUp{grid-area:up}#tDown{grid-area:down}#tLeft{grid-area:left}#tRight{grid-area:right}
+</style>
+</head>
+<body>
+<div id="gameContainer">
+<div id="hud"><span id="scoreDisplay">Score: 0</span><span id="livesDisplay"></span><span id="levelDisplay">Level 1</span></div>
+<canvas id="game"></canvas>
+<div id="touchControls">
+<button class="tBtn" id="tUp">&#9650;</button>
+<button class="tBtn" id="tLeft">&#9664;</button>
+<button class="tBtn" id="tRight">&#9654;</button>
+<button class="tBtn" id="tDown">&#9660;</button>
+</div>
+</div>
+<div id="startScreen"><h1>PAC-MAN MATH!</h1><p>Answer math questions to help Pac-Man escape!</p><p>Eat dots, avoid ghosts, have fun!</p><button id="startBtn" ontouchstart="">START GAME</button></div>
+<div id="mathPopup"><div class="question" id="mathQ"></div><div class="choices" id="mathChoices"></div></div>
+<div id="quotePopup"><div class="stars" id="quoteStars"></div><div class="quoteText" id="quoteText"></div><div class="quoteAuthor" id="quoteAuthor"></div><button class="continueBtn" id="continueBtn" ontouchstart="">&#127922;</button></div>
+<div id="gameOver"><h2>GAME OVER</h2><p id="finalScore"></p><button onclick="location.reload()" ontouchstart="">PLAY AGAIN</button></div>
+<script>
+// ===== SOUND ENGINE =====
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let actx;
+function initAudio(){if(!actx)actx=new AudioCtx()}
+function playWaka(){
+  if(!actx)return;let o=actx.createOscillator(),g=actx.createGain();
+  o.connect(g);g.connect(actx.destination);o.type='square';
+  o.frequency.setValueAtTime(400,actx.currentTime);
+  o.frequency.linearRampToValueAtTime(200,actx.currentTime+0.08);
+  g.gain.setValueAtTime(0.15,actx.currentTime);
+  g.gain.linearRampToValueAtTime(0,actx.currentTime+0.1);
+  o.start(actx.currentTime);o.stop(actx.currentTime+0.1);
+}
+function playPowerUp(){
+  if(!actx)return;let o=actx.createOscillator(),g=actx.createGain();
+  o.connect(g);g.connect(actx.destination);o.type='sine';
+  o.frequency.setValueAtTime(200,actx.currentTime);
+  o.frequency.linearRampToValueAtTime(800,actx.currentTime+0.3);
+  g.gain.setValueAtTime(0.2,actx.currentTime);
+  g.gain.linearRampToValueAtTime(0,actx.currentTime+0.4);
+  o.start(actx.currentTime);o.stop(actx.currentTime+0.4);
+}
+function playEatGhost(){
+  if(!actx)return;for(let i=0;i<3;i++){let o=actx.createOscillator(),g=actx.createGain();
+  o.connect(g);g.connect(actx.destination);o.type='sawtooth';
+  let t=actx.currentTime+i*0.1;
+  o.frequency.setValueAtTime(600+i*200,t);
+  g.gain.setValueAtTime(0.15,t);g.gain.linearRampToValueAtTime(0,t+0.1);
+  o.start(t);o.stop(t+0.1);}
+}
+function playDeath(){
+  if(!actx)return;let o=actx.createOscillator(),g=actx.createGain();
+  o.connect(g);g.connect(actx.destination);o.type='sawtooth';
+  o.frequency.setValueAtTime(500,actx.currentTime);
+  o.frequency.linearRampToValueAtTime(50,actx.currentTime+0.8);
+  g.gain.setValueAtTime(0.2,actx.currentTime);
+  g.gain.linearRampToValueAtTime(0,actx.currentTime+1);
+  o.start(actx.currentTime);o.stop(actx.currentTime+1);
+}
+function playCorrect(){
+  if(!actx)return;[523,659,784].forEach((f,i)=>{let o=actx.createOscillator(),g=actx.createGain();
+  o.connect(g);g.connect(actx.destination);o.type='sine';
+  let t=actx.currentTime+i*0.12;
+  o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(0.2,t);
+  g.gain.linearRampToValueAtTime(0,t+0.15);o.start(t);o.stop(t+0.15);});
+}
+function playWrong(){
+  if(!actx)return;let o=actx.createOscillator(),g=actx.createGain();
+  o.connect(g);g.connect(actx.destination);o.type='square';
+  o.frequency.setValueAtTime(150,actx.currentTime);
+  g.gain.setValueAtTime(0.15,actx.currentTime);
+  g.gain.linearRampToValueAtTime(0,actx.currentTime+0.3);
+  o.start(actx.currentTime);o.stop(actx.currentTime+0.3);
+}
+function playSiren(){
+  if(!actx)return;let o=actx.createOscillator(),g=actx.createGain();
+  o.connect(g);g.connect(actx.destination);o.type='sine';
+  o.frequency.setValueAtTime(300,actx.currentTime);
+  o.frequency.linearRampToValueAtTime(400,actx.currentTime+0.4);
+  o.frequency.linearRampToValueAtTime(300,actx.currentTime+0.8);
+  g.gain.setValueAtTime(0.06,actx.currentTime);
+  g.gain.linearRampToValueAtTime(0,actx.currentTime+0.8);
+  o.start(actx.currentTime);o.stop(actx.currentTime+0.8);
+}
+function playIntro(){
+  if(!actx)return;
+  const notes=[523,587,659,698,784,698,659,587,523];
+  notes.forEach((f,i)=>{let o=actx.createOscillator(),g=actx.createGain();
+  o.connect(g);g.connect(actx.destination);o.type='sine';
+  let t=actx.currentTime+i*0.15;
+  o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(0.2,t);
+  g.gain.linearRampToValueAtTime(0,t+0.14);o.start(t);o.stop(t+0.15);});
+}
+function playCherry(){
+  if(!actx)return;[800,1000,1200].forEach((f,i)=>{let o=actx.createOscillator(),g=actx.createGain();
+  o.connect(g);g.connect(actx.destination);o.type='sine';
+  let t=actx.currentTime+i*0.08;
+  o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(0.15,t);
+  g.gain.linearRampToValueAtTime(0,t+0.1);o.start(t);o.stop(t+0.1);});
+}
+
+// ===== QUOTES =====
+const quotes=[
+  {text:"You miss 100% of the shots you don't take.",author:"Wayne Gretzky"},
+  {text:"Believe you can and you're halfway there.",author:"Theodore Roosevelt"},
+  {text:"Practice makes progress!",author:"Old Saying"},
+  {text:"Every champion was once a beginner.",author:"Unknown"},
+  {text:"Hard work beats talent when talent doesn't work hard.",author:"Tim Notke"},
+  {text:"Be like water, my friend.",author:"Bruce Lee"},
+  {text:"The journey of a thousand miles begins with a single step.",author:"Lao Tzu"},
+  {text:"Peace comes from within. Do not seek it without.",author:"Buddha"},
+  {text:"With your own effort, you will succeed.",author:"Guru Nanak"},
+  {text:"Patience is the key to joy.",author:"Rumi"},
+  {text:"Fall seven times, stand up eight.",author:"Japanese Proverb"},
+  {text:"Focus on the step in front of you, not the whole staircase.",author:"Martin Luther King Jr."},
+  {text:"It does not matter how slowly you go, as long as you do not stop.",author:"Confucius"},
+  {text:"The only way to do great work is to love what you do.",author:"Steve Jobs"},
+  {text:"You are braver than you believe, stronger than you seem.",author:"A.A. Milne"},
+  {text:"Champions keep going when they don't have anything left.",author:"Muhammad Ali"},
+  {text:"What you think, you become.",author:"Buddha"},
+  {text:"Where there is love, there is life.",author:"Mahatma Gandhi"},
+  {text:"Keep your face to the sunshine and you will never see shadows.",author:"Helen Keller"},
+  {text:"By failing to prepare, you are preparing to fail.",author:"Benjamin Franklin"},
+  {text:"The mind is everything. What you think you become.",author:"Buddha"},
+  {text:"A river cuts through rock not because of its power, but its persistence.",author:"Jim Watkins"},
+  {text:"Do your best and leave the rest to the universe.",author:"Sikh Wisdom"},
+  {text:"The best time to plant a tree was 20 years ago. The second best is now.",author:"Chinese Proverb"},
+  {text:"Stars can't shine without darkness.",author:"D.H. Sidebottom"},
+  {text:"Winners never quit, and quitters never win.",author:"Vince Lombardi"},
+  {text:"Strength does not come from winning. Your struggles develop your strength.",author:"Arnold Schwarzenegger"},
+  {text:"Be happy in the moment, that's enough. Each moment is all we need.",author:"Mother Teresa"},
+  {text:"Success is not final, failure is not fatal: it is the courage to continue.",author:"Winston Churchill"},
+  {text:"Through patience, great things are accomplished.",author:"Guru Arjan Dev Ji"}
+];
+let usedQuotes=[];
+
+// ===== MAZE =====
+// 0=path,1=wall,2=dot,3=powerPellet,4=empty,5=gate,6=gateEntry,7=cherry
+// Simple maze for a toddler - wide corridors, few turns
+const COLS=15,ROWS=17;
+const mazeTemplate=[
+//  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],// 0
+  [1,2,2,2,2,2,1,7,1,2,2,2,2,2,1],// 1
+  [1,2,1,1,2,2,2,2,2,2,2,1,1,2,1],// 2
+  [1,2,2,2,2,1,2,2,2,1,2,2,2,2,1],// 3
+  [1,1,2,1,2,2,2,2,2,2,2,1,2,1,1],// 4
+  [1,3,2,2,2,1,1,2,1,1,2,2,2,3,1],// 5
+  [1,2,1,2,2,2,2,2,2,2,2,2,1,2,1],// 6
+  [1,2,2,2,1,2,4,4,4,2,1,2,2,2,1],// 7  ghost house area
+  [1,2,1,2,1,2,4,4,4,2,1,2,1,2,1],// 8
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,1],// 9
+  [1,2,1,1,2,2,2,2,2,2,2,1,1,2,1],//10
+  [1,2,2,2,2,1,2,7,2,1,2,2,2,2,1],//11
+  [1,1,2,1,2,2,2,2,2,2,2,1,2,1,1],//12
+  [1,2,2,2,2,2,1,6,1,2,2,2,2,2,1],//13  gate entry
+  [1,1,1,1,1,1,1,5,1,1,1,1,1,1,1],//14  gate wall
+  [1,4,4,4,4,4,4,2,4,4,4,4,4,4,1],//15  inside gate
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],//16
+];
+
+
+// ===== GAME STATE =====
+const canvas=document.getElementById('game');
+const ctx=canvas.getContext('2d');
+let TILE,maze,score=0,lives=3,level=1,paused=false,gameRunning=false,gameOverFlag=false;
+let pacman,ghosts,ghostTimer=0,sirenTimer=0,cherryTimer=0,wakaTimer=0;
+let pacInGate=true,needMathToLeave=true,animFrame=0;
+let powerMode=false,powerTimer=0;
+let mathReason=''; // 'gate' or 'power'
+
+function sizeCanvas(){
+  const maxW=Math.min(window.innerWidth-16,420);
+  TILE=Math.floor(maxW/COLS);
+  canvas.width=COLS*TILE;canvas.height=ROWS*TILE;
+}
+sizeCanvas();
+
+function cloneMaze(){return mazeTemplate.map(r=>[...r])}
+function resetMaze(){maze=cloneMaze()}
+
+// ===== PAC-MAN =====
+function createPacman(){
+  return {x:7,y:15,dir:0,nextDir:0,mouthOpen:true,mouthTimer:0,moveTimer:0,moveDelay:6};
+}
+
+// ===== GHOSTS =====
+const ghostColors=['#FF0000','#FFB8FF','#00FFFF','#FFB852'];
+function createGhosts(){
+  return [
+    {x:6,y:7,dir:0,color:ghostColors[0],moveTimer:0,moveDelay:10,scared:false,eaten:false},
+    {x:7,y:7,dir:1,color:ghostColors[1],moveTimer:0,moveDelay:12,scared:false,eaten:false},
+    {x:8,y:7,dir:2,color:ghostColors[2],moveTimer:0,moveDelay:11,scared:false,eaten:false},
+    {x:7,y:8,dir:3,color:ghostColors[3],moveTimer:0,moveDelay:13,scared:false,eaten:false},
+  ];
+}
+
+// ===== MOVEMENT =====
+const dirs=[[1,0],[0,1],[-1,0],[0,-1]]; // right,down,left,up
+
+function canMove(x,y,dir,isGhost){
+  const nx=x+dirs[dir][0], ny=y+dirs[dir][1];
+  if(nx<0||nx>=COLS||ny<0||ny>=ROWS)return false;
+  const t=maze[ny][nx];
+  if(t===1)return false;
+  // Ghosts cannot enter gate area (rows 14-16) or go through gate
+  if(isGhost && (ny>=14 || t===5 || t===6))return false;
+  // Gate tile: pacman can always enter gate from above
+  if(t===5 && !isGhost)return true;
+  return true;
+}
+
+function movePacman(){
+  pacman.moveTimer++;
+  if(pacman.moveTimer<pacman.moveDelay)return;
+  pacman.moveTimer=0;
+  // Try next direction first
+  if(canMove(pacman.x,pacman.y,pacman.nextDir,false)){
+    pacman.dir=pacman.nextDir;
+  }
+  if(canMove(pacman.x,pacman.y,pacman.dir,false)){
+    pacman.x+=dirs[pacman.dir][0];
+    pacman.y+=dirs[pacman.dir][1];
+  }
+  // Check if entering gate area
+  const wasInGate=pacInGate;
+  pacInGate=(pacman.y>=14);
+  if(!wasInGate && pacInGate) needMathToLeave=true;
+
+  // Check if trying to leave gate (moving to row 13 from row 14)
+  if(pacInGate && pacman.y===14 && pacman.dir===3 && needMathToLeave){
+    // Block and show math
+    showMath('gate');
+    return;
+  }
+
+  // Eat dots
+  const t=maze[pacman.y][pacman.x];
+  if(t===2){maze[pacman.y][pacman.x]=4;score+=10;playWaka();checkWin();}
+  if(t===3){
+    maze[pacman.y][pacman.x]=4;score+=50;
+    showMath('power');
+    return;
+  }
+  if(t===7){maze[pacman.y][pacman.x]=4;score+=100;playCherry();}
+  if(t===6){maze[pacman.y][pacman.x]=4;} // gate entry, just walk through
+}
+
+function activatePowerMode(){
+  powerMode=true;powerTimer=300;
+  ghosts.forEach(g=>{if(!g.eaten)g.scared=true;});
+  playPowerUp();
+}
+
+function moveGhosts(){
+  ghosts.forEach(g=>{
+    g.moveTimer++;
+    if(g.moveTimer < (g.scared ? g.moveDelay+6 : g.moveDelay))return;
+    g.moveTimer=0;
+    // Simple AI: sometimes chase, sometimes random
+    const choices=[];
+    for(let d=0;d<4;d++){
+      if(canMove(g.x,g.y,d,true))choices.push(d);
+    }
+    if(choices.length===0)return;
+    // Don't reverse unless stuck
+    const rev=(g.dir+2)%4;
+    const nonRev=choices.filter(d=>d!==rev);
+    const pool=nonRev.length>0?nonRev:choices;
+    
+    if(Math.random()<0.4 && !g.scared){
+      // Chase pacman (simple)
+      let best=pool[0],bestDist=999;
+      pool.forEach(d=>{
+        const nx=g.x+dirs[d][0],ny=g.y+dirs[d][1];
+        const dist=Math.abs(nx-pacman.x)+Math.abs(ny-pacman.y);
+        if(dist<bestDist){bestDist=dist;best=d;}
+      });
+      g.dir=best;
+    } else if(g.scared && Math.random()<0.5){
+      // Run from pacman
+      let best=pool[0],bestDist=0;
+      pool.forEach(d=>{
+        const nx=g.x+dirs[d][0],ny=g.y+dirs[d][1];
+        const dist=Math.abs(nx-pacman.x)+Math.abs(ny-pacman.y);
+        if(dist>bestDist){bestDist=dist;best=d;}
+      });
+      g.dir=best;
+    } else {
+      g.dir=pool[Math.floor(Math.random()*pool.length)];
+    }
+    g.x+=dirs[g.dir][0];g.y+=dirs[g.dir][1];
+  });
+}
+
+
+// ===== COLLISION =====
+function checkCollisions(){
+  ghosts.forEach(g=>{
+    if(g.x===pacman.x && g.y===pacman.y){
+      if(g.scared && !g.eaten){
+        g.eaten=true;g.scared=false;score+=200;playEatGhost();
+        // Send ghost back to house
+        g.x=7;g.y=7;
+        setTimeout(()=>{g.eaten=false;},3000);
+      } else if(!g.eaten){
+        lives--;playDeath();
+        document.getElementById('livesDisplay').textContent='❤️'.repeat(lives);
+        if(lives<=0){endGame();return;}
+        // Reset positions
+        pacman.x=7;pacman.y=15;pacInGate=true;needMathToLeave=true;
+        powerMode=false;ghosts.forEach(gg=>{gg.scared=false;gg.eaten=false;});
+      }
+    }
+  });
+}
+
+function checkWin(){
+  let dotsLeft=0;
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    if(maze[r][c]===2||maze[r][c]===3)dotsLeft++;
+  }
+  if(dotsLeft===0){
+    level++;
+    document.getElementById('levelDisplay').textContent='Level '+level;
+    resetMaze();
+    pacman.x=7;pacman.y=15;pacInGate=true;needMathToLeave=true;
+    ghosts.forEach((g,i)=>{g.x=[6,7,8,7][i];g.y=[7,7,7,8][i];g.scared=false;g.eaten=false;});
+    // Speed up slightly
+    pacman.moveDelay=Math.max(4,pacman.moveDelay-1);
+    ghosts.forEach(g=>g.moveDelay=Math.max(7,g.moveDelay-1));
+    playIntro();
+  }
+}
+
+function endGame(){
+  gameOverFlag=true;gameRunning=false;
+  document.getElementById('finalScore').textContent='Score: '+score;
+  document.getElementById('gameOver').style.display='flex';
+}
+
+// ===== MATH POPUP =====
+function showMath(reason){
+  paused=true;mathReason=reason;
+  const a=Math.floor(Math.random()*11);
+  const b=Math.floor(Math.random()*(11-a)); // keep sum <= 10... actually let's allow up to 10+10
+  const ans=a+b;
+  document.getElementById('mathQ').textContent=a+' + '+b+' = ?';
+  const choicesDiv=document.getElementById('mathChoices');
+  choicesDiv.innerHTML='';
+  // Generate 4 choices including correct
+  let opts=new Set([ans]);
+  while(opts.size<4){
+    let wrong=Math.floor(Math.random()*21);
+    if(wrong!==ans)opts.add(wrong);
+  }
+  let arr=[...opts].sort(()=>Math.random()-0.5);
+  arr.forEach(v=>{
+    const btn=document.createElement('button');
+    btn.textContent=v;
+    btn.ontouchstart=btn.onclick=function(e){
+      e.preventDefault();
+      if(v===ans){
+        btn.classList.add('correct');
+        playCorrect();score+=25;
+        updateHud();
+        setTimeout(()=>{
+          document.getElementById('mathPopup').style.display='none';
+          if(reason==='gate'){
+            needMathToLeave=false;
+            // Move pacman out of gate
+            pacman.y=13;pacman.dir=3;
+          }
+          if(reason==='power'){
+            activatePowerMode();
+          }
+          showQuote();
+        },400);
+      } else {
+        btn.classList.add('wrong');
+        playWrong();
+        setTimeout(()=>{btn.classList.remove('wrong');},500);
+      }
+    };
+    choicesDiv.appendChild(btn);
+  });
+  document.getElementById('mathPopup').style.display='flex';
+}
+
+function showQuote(){
+  if(usedQuotes.length>=quotes.length)usedQuotes=[];
+  let q;
+  do{q=quotes[Math.floor(Math.random()*quotes.length)];}while(usedQuotes.includes(q.text));
+  usedQuotes.push(q.text);
+  const stars=['⭐','🌟','✨','💫','🎉','🏆','👑','🦁','🌈','🚀'];
+  document.getElementById('quoteStars').textContent=stars[Math.floor(Math.random()*stars.length)].repeat(3);
+  document.getElementById('quoteText').textContent='"'+q.text+'"';
+  document.getElementById('quoteAuthor').textContent='— '+q.author;
+  document.getElementById('quotePopup').style.display='flex';
+}
+
+document.getElementById('continueBtn').ontouchstart=
+document.getElementById('continueBtn').onclick=function(e){
+  e.preventDefault();
+  document.getElementById('quotePopup').style.display='none';
+  paused=false;
+};
+
+// ===== DRAWING =====
+function drawMaze(){
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++){
+      const t=maze[r][c];
+      const x=c*TILE,y=r*TILE;
+      if(t===1){
+        ctx.fillStyle='#2121DE';ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle='#1010AA';ctx.fillRect(x+2,y+2,TILE-4,TILE-4);
+      } else if(t===5){
+        // Gate - draw as a special gate bar
+        ctx.fillStyle='#000';ctx.fillRect(x,y,TILE,TILE);
+        ctx.fillStyle='#FF69B4';ctx.fillRect(x,y+TILE/2-3,TILE,6);
+      } else {
+        // Floor color: slightly different inside gate
+        ctx.fillStyle=(r>=14)?'#0a0a1a':'#000';
+        ctx.fillRect(x,y,TILE,TILE);
+      }
+      if(t===2){
+        ctx.fillStyle='#FFB8AE';ctx.beginPath();
+        ctx.arc(x+TILE/2,y+TILE/2,TILE/8,0,Math.PI*2);ctx.fill();
+      }
+      if(t===3){
+        ctx.fillStyle='#FFB8AE';ctx.beginPath();
+        const pulse=Math.sin(animFrame*0.1)*2;
+        ctx.arc(x+TILE/2,y+TILE/2,TILE/4+pulse,0,Math.PI*2);ctx.fill();
+      }
+      if(t===7){
+        // Cherry
+        ctx.fillStyle='#FF0000';ctx.beginPath();
+        ctx.arc(x+TILE/2-3,y+TILE/2+2,TILE/5,0,Math.PI*2);ctx.fill();
+        ctx.beginPath();ctx.arc(x+TILE/2+3,y+TILE/2+2,TILE/5,0,Math.PI*2);ctx.fill();
+        ctx.strokeStyle='#00AA00';ctx.lineWidth=2;
+        ctx.beginPath();ctx.moveTo(x+TILE/2-2,y+TILE/2-1);
+        ctx.quadraticCurveTo(x+TILE/2,y+TILE/2-8,x+TILE/2+4,y+TILE/2-4);ctx.stroke();
+      }
+      if(t===6){
+        // Gate entry marker
+        ctx.fillStyle='#333';ctx.fillRect(x,y,TILE,TILE);
+      }
+    }
+  }
+  // Draw gate area border
+  ctx.strokeStyle='#FF69B4';ctx.lineWidth=2;
+  ctx.strokeRect(0,14*TILE,COLS*TILE,3*TILE);
+}
+
+function drawPacman(){
+  const x=pacman.x*TILE+TILE/2, y=pacman.y*TILE+TILE/2;
+  pacman.mouthTimer++;
+  if(pacman.mouthTimer>4){pacman.mouthOpen=!pacman.mouthOpen;pacman.mouthTimer=0;}
+  const mouthAngle=pacman.mouthOpen?0.25:0.05;
+  const angle=[0,Math.PI/2,Math.PI,Math.PI*1.5][pacman.dir];
+  ctx.fillStyle='#FFFF00';ctx.beginPath();
+  ctx.arc(x,y,TILE/2-2,angle+mouthAngle*Math.PI,angle-mouthAngle*Math.PI+Math.PI*2);
+  ctx.lineTo(x,y);ctx.fill();
+  // Eye
+  const eyeX=x+Math.cos(angle-0.5)*TILE/5;
+  const eyeY=y+Math.sin(angle-0.5)*TILE/5-2;
+  ctx.fillStyle='#000';ctx.beginPath();ctx.arc(eyeX,eyeY,2,0,Math.PI*2);ctx.fill();
+}
+
+function drawGhosts(){
+  ghosts.forEach(g=>{
+    if(g.eaten)return;
+    const x=g.x*TILE,y=g.y*TILE;
+    ctx.fillStyle=g.scared?((animFrame%20<10)?'#2121DE':'#fff'):g.color;
+    // Ghost body
+    ctx.beginPath();
+    ctx.arc(x+TILE/2,y+TILE/2-2,TILE/2-2,Math.PI,0);
+    ctx.lineTo(x+TILE-2,y+TILE-2);
+    // Wavy bottom
+    const w=TILE/3;
+    for(let i=0;i<3;i++){
+      ctx.quadraticCurveTo(x+2+w*i+w/2,y+TILE+4,x+2+w*(i+1),y+TILE-2);
+    }
+    ctx.lineTo(x+2,y+TILE/2-2);ctx.fill();
+    // Eyes
+    if(!g.scared){
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(x+TILE/3,y+TILE/2-3,3,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+TILE*2/3,y+TILE/2-3,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='#00f';
+      ctx.beginPath();ctx.arc(x+TILE/3+1,y+TILE/2-2,1.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+TILE*2/3+1,y+TILE/2-2,1.5,0,Math.PI*2);ctx.fill();
+    } else {
+      ctx.fillStyle='#fff';
+      ctx.beginPath();ctx.arc(x+TILE/3,y+TILE/2-3,2,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(x+TILE*2/3,y+TILE/2-3,2,0,Math.PI*2);ctx.fill();
+    }
+  });
+}
+
+function updateHud(){
+  document.getElementById('scoreDisplay').textContent='Score: '+score;
+  document.getElementById('livesDisplay').textContent='❤️'.repeat(Math.max(0,lives));
+}
+
+
+// ===== GAME LOOP =====
+function gameLoop(){
+  if(!gameRunning)return;
+  if(!paused && !gameOverFlag){
+    animFrame++;
+    movePacman();
+    moveGhosts();
+    checkCollisions();
+    if(powerMode){
+      powerTimer--;
+      if(powerTimer<=0){
+        powerMode=false;
+        ghosts.forEach(g=>{g.scared=false;});
+      }
+    }
+    sirenTimer++;
+    if(sirenTimer>60){sirenTimer=0;if(!powerMode)playSiren();}
+    updateHud();
+  }
+  // Draw
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawMaze();
+  drawPacman();
+  drawGhosts();
+  requestAnimationFrame(gameLoop);
+}
+
+// ===== CONTROLS =====
+// Touch buttons
+document.getElementById('tUp').ontouchstart=function(e){e.preventDefault();pacman.nextDir=3;};
+document.getElementById('tDown').ontouchstart=function(e){e.preventDefault();pacman.nextDir=1;};
+document.getElementById('tLeft').ontouchstart=function(e){e.preventDefault();pacman.nextDir=2;};
+document.getElementById('tRight').ontouchstart=function(e){e.preventDefault();pacman.nextDir=0;};
+document.getElementById('tUp').onclick=function(){pacman.nextDir=3;};
+document.getElementById('tDown').onclick=function(){pacman.nextDir=1;};
+document.getElementById('tLeft').onclick=function(){pacman.nextDir=2;};
+document.getElementById('tRight').onclick=function(){pacman.nextDir=0;};
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight')pacman.nextDir=0;
+  if(e.key==='ArrowDown')pacman.nextDir=1;
+  if(e.key==='ArrowLeft')pacman.nextDir=2;
+  if(e.key==='ArrowUp')pacman.nextDir=3;
+});
+
+// Swipe controls
+let touchStartX=0,touchStartY=0;
+canvas.addEventListener('touchstart',e=>{
+  e.preventDefault();
+  touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;
+},{passive:false});
+canvas.addEventListener('touchend',e=>{
+  e.preventDefault();
+  const dx=e.changedTouches[0].clientX-touchStartX;
+  const dy=e.changedTouches[0].clientY-touchStartY;
+  if(Math.abs(dx)>Math.abs(dy)){
+    pacman.nextDir=dx>0?0:2;
+  } else {
+    pacman.nextDir=dy>0?1:3;
+  }
+},{passive:false});
+
+// ===== START =====
+document.getElementById('startBtn').onclick=function(){
+  initAudio();playIntro();
+  document.getElementById('startScreen').style.display='none';
+  resetMaze();
+  pacman=createPacman();
+  ghosts=createGhosts();
+  pacInGate=true;needMathToLeave=true;
+  score=0;lives=3;level=1;gameOverFlag=false;
+  updateHud();
+  gameRunning=true;
+  gameLoop();
+};
+
+// Handle resize
+window.addEventListener('resize',()=>{
+  sizeCanvas();
+});
+</script>
+</body>
+</html>
