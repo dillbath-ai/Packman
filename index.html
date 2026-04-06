@@ -50,7 +50,7 @@ canvas{display:block;border:2px solid #2121DE;border-radius:4px}
 </div>
 <div id="startScreen"><h1>PAC-MAN MATH!</h1><p>Answer math questions to help Pac-Man escape!</p><p>Eat dots, avoid ghosts, have fun!</p><button id="startBtn" ontouchstart="">START GAME</button></div>
 <div id="mathPopup"><div class="question" id="mathQ"></div><div class="choices" id="mathChoices"></div></div>
-<div id="quotePopup"><div class="stars" id="quoteStars"></div><div class="quoteText" id="quoteText"></div><div class="quoteAuthor" id="quoteAuthor"></div><button class="continueBtn" id="continueBtn" ontouchstart="">&#127922;</button></div>
+<div id="quotePopup"><div class="stars" id="quoteStars"></div><div class="quoteText" id="quoteText"></div><div class="quoteAuthor" id="quoteAuthor"></div><button class="continueBtn" id="continueBtn" ontouchstart="">&#129409;</button></div>
 <div id="gameOver"><h2>GAME OVER</h2><p id="finalScore"></p><button onclick="location.reload()" ontouchstart="">PLAY AGAIN</button></div>
 <script>
 // ===== SOUND ENGINE =====
@@ -427,10 +427,11 @@ function showQuote(){
   let q;
   do{q=quotes[Math.floor(Math.random()*quotes.length)];}while(usedQuotes.includes(q.text));
   usedQuotes.push(q.text);
-  const stars=['🦁','🐯','🐻','🦊','🐶','🐱','🦄','🐵','🦅','🧑‍🚀'];
-  document.getElementById('quoteStars').textContent=stars[Math.floor(Math.random()*stars.length)].repeat(3);
+  const animalEmojis=['🦁','🐯','🐻','🦊','🐶','🐱','🦄','🐵','🦅','🐼','🐸','🦋','🐢','🐬','🦜'];
+  document.getElementById('quoteStars').textContent=animalEmojis[Math.floor(Math.random()*animalEmojis.length)].repeat(3);
   document.getElementById('quoteText').textContent='"'+q.text+'"';
   document.getElementById('quoteAuthor').textContent='— '+q.author;
+  document.getElementById('continueBtn').textContent=animalEmojis[Math.floor(Math.random()*animalEmojis.length)];
   document.getElementById('quotePopup').style.display='flex';
 }
 
