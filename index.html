@@ -223,10 +223,10 @@ function createPacman(){
 const ghostColors=['#FF0000','#FFB8FF','#00FFFF','#FFB852'];
 function createGhosts(){
   return [
-    {x:6,y:7,dir:0,color:ghostColors[0],moveTimer:0,moveDelay:28,scared:false,eaten:false},
-    {x:7,y:7,dir:1,color:ghostColors[1],moveTimer:0,moveDelay:32,scared:false,eaten:false},
-    {x:8,y:7,dir:2,color:ghostColors[2],moveTimer:0,moveDelay:30,scared:false,eaten:false},
-    {x:7,y:8,dir:3,color:ghostColors[3],moveTimer:0,moveDelay:35,scared:false,eaten:false},
+    {x:6,y:7,dir:0,color:ghostColors[0],moveTimer:0,moveDelay:50,scared:false,eaten:false},
+    {x:7,y:7,dir:1,color:ghostColors[1],moveTimer:0,moveDelay:58,scared:false,eaten:false},
+    {x:8,y:7,dir:2,color:ghostColors[2],moveTimer:0,moveDelay:54,scared:false,eaten:false},
+    {x:7,y:8,dir:3,color:ghostColors[3],moveTimer:0,moveDelay:62,scared:false,eaten:false},
   ];
 }
 
@@ -363,7 +363,7 @@ function checkWin(){
     ghosts.forEach((g,i)=>{g.x=[6,7,8,7][i];g.y=[7,7,7,8][i];g.scared=false;g.eaten=false;});
     // Speed up slightly
     pacman.moveDelay=Math.max(12,pacman.moveDelay-1);
-    ghosts.forEach(g=>g.moveDelay=Math.max(20,g.moveDelay-1));
+    ghosts.forEach(g=>g.moveDelay=Math.max(40,g.moveDelay-2));
     playIntro();
   }
 }
@@ -427,18 +427,20 @@ function showQuote(){
   let q;
   do{q=quotes[Math.floor(Math.random()*quotes.length)];}while(usedQuotes.includes(q.text));
   usedQuotes.push(q.text);
-  const stars=['⭐','🌟','✨','💫','🎉','🏆','👑','🦁','🌈','🚀'];
+  const stars=['🦁','🐯','🐻','🦊','🐶','🐱','🦄','🐵','🦅','🧑‍🚀'];
   document.getElementById('quoteStars').textContent=stars[Math.floor(Math.random()*stars.length)].repeat(3);
   document.getElementById('quoteText').textContent='"'+q.text+'"';
   document.getElementById('quoteAuthor').textContent='— '+q.author;
   document.getElementById('quotePopup').style.display='flex';
 }
 
+let waitingForInput=false;
 document.getElementById('continueBtn').ontouchstart=
 document.getElementById('continueBtn').onclick=function(e){
   e.preventDefault();
   document.getElementById('quotePopup').style.display='none';
-  paused=false;
+  // Don't unpause yet - wait for user to press a direction
+  waitingForInput=true;
 };
 
 // ===== DRAWING =====
@@ -568,22 +570,26 @@ function gameLoop(){
 }
 
 // ===== CONTROLS =====
+function handleDir(d){
+  pacman.nextDir=d;
+  if(waitingForInput){waitingForInput=false;paused=false;}
+}
 // Touch buttons
-document.getElementById('tUp').ontouchstart=function(e){e.preventDefault();pacman.nextDir=3;};
-document.getElementById('tDown').ontouchstart=function(e){e.preventDefault();pacman.nextDir=1;};
-document.getElementById('tLeft').ontouchstart=function(e){e.preventDefault();pacman.nextDir=2;};
-document.getElementById('tRight').ontouchstart=function(e){e.preventDefault();pacman.nextDir=0;};
-document.getElementById('tUp').onclick=function(){pacman.nextDir=3;};
-document.getElementById('tDown').onclick=function(){pacman.nextDir=1;};
-document.getElementById('tLeft').onclick=function(){pacman.nextDir=2;};
-document.getElementById('tRight').onclick=function(){pacman.nextDir=0;};
+document.getElementById('tUp').ontouchstart=function(e){e.preventDefault();handleDir(3);};
+document.getElementById('tDown').ontouchstart=function(e){e.preventDefault();handleDir(1);};
+document.getElementById('tLeft').ontouchstart=function(e){e.preventDefault();handleDir(2);};
+document.getElementById('tRight').ontouchstart=function(e){e.preventDefault();handleDir(0);};
+document.getElementById('tUp').onclick=function(){handleDir(3);};
+document.getElementById('tDown').onclick=function(){handleDir(1);};
+document.getElementById('tLeft').onclick=function(){handleDir(2);};
+document.getElementById('tRight').onclick=function(){handleDir(0);};
 
 // Keyboard
 document.addEventListener('keydown',e=>{
-  if(e.key==='ArrowRight')pacman.nextDir=0;
-  if(e.key==='ArrowDown')pacman.nextDir=1;
-  if(e.key==='ArrowLeft')pacman.nextDir=2;
-  if(e.key==='ArrowUp')pacman.nextDir=3;
+  if(e.key==='ArrowRight')handleDir(0);
+  if(e.key==='ArrowDown')handleDir(1);
+  if(e.key==='ArrowLeft')handleDir(2);
+  if(e.key==='ArrowUp')handleDir(3);
 });
 
 // Swipe controls
@@ -597,9 +603,9 @@ canvas.addEventListener('touchend',e=>{
   const dx=e.changedTouches[0].clientX-touchStartX;
   const dy=e.changedTouches[0].clientY-touchStartY;
   if(Math.abs(dx)>Math.abs(dy)){
-    pacman.nextDir=dx>0?0:2;
+    handleDir(dx>0?0:2);
   } else {
-    pacman.nextDir=dy>0?1:3;
+    handleDir(dy>0?1:3);
   }
 },{passive:false});
 
