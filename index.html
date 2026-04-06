@@ -216,17 +216,17 @@ function resetMaze(){maze=cloneMaze()}
 
 // ===== PAC-MAN =====
 function createPacman(){
-  return {x:7,y:15,dir:0,nextDir:0,mouthOpen:true,mouthTimer:0,moveTimer:0,moveDelay:18};
+  return {x:7,y:15,dir:0,nextDir:0,mouthOpen:true,mouthTimer:0,moveTimer:0,moveDelay:24};
 }
 
 // ===== GHOSTS =====
 const ghostColors=['#FF0000','#FFB8FF','#00FFFF','#FFB852'];
 function createGhosts(){
   return [
-    {x:6,y:7,dir:0,color:ghostColors[0],moveTimer:0,moveDelay:50,scared:false,eaten:false},
-    {x:7,y:7,dir:1,color:ghostColors[1],moveTimer:0,moveDelay:58,scared:false,eaten:false},
-    {x:8,y:7,dir:2,color:ghostColors[2],moveTimer:0,moveDelay:54,scared:false,eaten:false},
-    {x:7,y:8,dir:3,color:ghostColors[3],moveTimer:0,moveDelay:62,scared:false,eaten:false},
+    {x:6,y:7,dir:0,color:ghostColors[0],moveTimer:0,moveDelay:70,scared:false,eaten:false},
+    {x:7,y:7,dir:1,color:ghostColors[1],moveTimer:0,moveDelay:80,scared:false,eaten:false},
+    {x:8,y:7,dir:2,color:ghostColors[2],moveTimer:0,moveDelay:75,scared:false,eaten:false},
+    {x:7,y:8,dir:3,color:ghostColors[3],moveTimer:0,moveDelay:85,scared:false,eaten:false},
   ];
 }
 
@@ -362,8 +362,8 @@ function checkWin(){
     pacman.x=7;pacman.y=15;pacInGate=true;needMathToLeave=true;
     ghosts.forEach((g,i)=>{g.x=[6,7,8,7][i];g.y=[7,7,7,8][i];g.scared=false;g.eaten=false;});
     // Speed up slightly
-    pacman.moveDelay=Math.max(12,pacman.moveDelay-1);
-    ghosts.forEach(g=>g.moveDelay=Math.max(40,g.moveDelay-2));
+    pacman.moveDelay=Math.max(18,pacman.moveDelay-1);
+    ghosts.forEach(g=>g.moveDelay=Math.max(55,g.moveDelay-2));
     playIntro();
   }
 }
@@ -467,7 +467,7 @@ function drawMaze(){
       }
       if(t===3){
         ctx.fillStyle='#FFB8AE';ctx.beginPath();
-        const pulse=Math.sin(animFrame*0.1)*2;
+        const pulse=Math.sin(animFrame*0.04)*2;
         ctx.arc(x+TILE/2,y+TILE/2,TILE/4+pulse,0,Math.PI*2);ctx.fill();
       }
       if(t===7){
@@ -493,7 +493,7 @@ function drawMaze(){
 function drawPacman(){
   const x=pacman.x*TILE+TILE/2, y=pacman.y*TILE+TILE/2;
   pacman.mouthTimer++;
-  if(pacman.mouthTimer>4){pacman.mouthOpen=!pacman.mouthOpen;pacman.mouthTimer=0;}
+  if(pacman.mouthTimer>12){pacman.mouthOpen=!pacman.mouthOpen;pacman.mouthTimer=0;}
   const mouthAngle=pacman.mouthOpen?0.25:0.05;
   const angle=[0,Math.PI/2,Math.PI,Math.PI*1.5][pacman.dir];
   ctx.fillStyle='#FFFF00';ctx.beginPath();
@@ -509,7 +509,7 @@ function drawGhosts(){
   ghosts.forEach(g=>{
     if(g.eaten)return;
     const x=g.x*TILE,y=g.y*TILE;
-    ctx.fillStyle=g.scared?((animFrame%20<10)?'#2121DE':'#fff'):g.color;
+    ctx.fillStyle=g.scared?((animFrame%60<30)?'#2121DE':'#fff'):g.color;
     // Ghost body
     ctx.beginPath();
     ctx.arc(x+TILE/2,y+TILE/2-2,TILE/2-2,Math.PI,0);
