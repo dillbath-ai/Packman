@@ -216,17 +216,17 @@ function resetMaze(){maze=cloneMaze()}
 
 // ===== PAC-MAN =====
 function createPacman(){
-  return {x:7,y:15,dir:0,nextDir:0,mouthOpen:true,mouthTimer:0,moveTimer:0,moveDelay:6};
+  return {x:7,y:15,dir:0,nextDir:0,mouthOpen:true,mouthTimer:0,moveTimer:0,moveDelay:18};
 }
 
 // ===== GHOSTS =====
 const ghostColors=['#FF0000','#FFB8FF','#00FFFF','#FFB852'];
 function createGhosts(){
   return [
-    {x:6,y:7,dir:0,color:ghostColors[0],moveTimer:0,moveDelay:10,scared:false,eaten:false},
-    {x:7,y:7,dir:1,color:ghostColors[1],moveTimer:0,moveDelay:12,scared:false,eaten:false},
-    {x:8,y:7,dir:2,color:ghostColors[2],moveTimer:0,moveDelay:11,scared:false,eaten:false},
-    {x:7,y:8,dir:3,color:ghostColors[3],moveTimer:0,moveDelay:13,scared:false,eaten:false},
+    {x:6,y:7,dir:0,color:ghostColors[0],moveTimer:0,moveDelay:28,scared:false,eaten:false},
+    {x:7,y:7,dir:1,color:ghostColors[1],moveTimer:0,moveDelay:32,scared:false,eaten:false},
+    {x:8,y:7,dir:2,color:ghostColors[2],moveTimer:0,moveDelay:30,scared:false,eaten:false},
+    {x:7,y:8,dir:3,color:ghostColors[3],moveTimer:0,moveDelay:35,scared:false,eaten:false},
   ];
 }
 
@@ -362,8 +362,8 @@ function checkWin(){
     pacman.x=7;pacman.y=15;pacInGate=true;needMathToLeave=true;
     ghosts.forEach((g,i)=>{g.x=[6,7,8,7][i];g.y=[7,7,7,8][i];g.scared=false;g.eaten=false;});
     // Speed up slightly
-    pacman.moveDelay=Math.max(4,pacman.moveDelay-1);
-    ghosts.forEach(g=>g.moveDelay=Math.max(7,g.moveDelay-1));
+    pacman.moveDelay=Math.max(12,pacman.moveDelay-1);
+    ghosts.forEach(g=>g.moveDelay=Math.max(20,g.moveDelay-1));
     playIntro();
   }
 }
